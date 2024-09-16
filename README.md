@@ -1,6 +1,7 @@
 # Ethereum WebSocket Block Time Logger
 
 This Node.js script connects to an Ethereum WebSocket endpoint to monitor new blocks on the blockchain. It calculates and logs the time difference between when a block is received and its timestamp in milliseconds. This script also includes functionality to manage WebSocket connection stability and simulate connection issues for testing purposes.
+![alt text](screenshot.png "Screenshot")
 
 ## Features
 
