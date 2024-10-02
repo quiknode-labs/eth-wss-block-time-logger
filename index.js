@@ -1,8 +1,11 @@
 // Importing ethers library from Ethers.js
 const { ethers } = require('ethers');
 
-// Configuration for the Ethereum node WebSocket URL
-const config = { ETH_NODE_WSS: 'QUICKNODE_WSS_URL' };
+// Configuration for the Ethereum node WebSocket URL and the debug RPC endpoint
+const config = { 
+    ETH_NODE_WSS: 'wss://WEBSOCKET_NODE/', 
+    RPC_NODE_RPC: 'https://RPC_NODE/' 
+};
 // Using console for logging
 const logger = console;
 
@@ -16,6 +19,9 @@ const SIMULATE_DISCONNECT_INTERVAL = 30000; // Interval to simulate disconnectio
 // Toggle for the disconnect simulation feature
 const simulateDisconnect = true; // Set to false to disable disconnect simulation
 
+// Variable to control whether to perform debug_traceBlockByNumber
+const enableTraceBlock = true; // Set this to false to disable the block tracing
+
 // Variable to track the number of reconnection attempts
 let reconnectAttempts = 0;
 
@@ -25,10 +31,37 @@ function simulateBrokenConnection(provider) {
     provider.websocket.close();
 }
 
+// Function to convert a block number to hexadecimal
+function toHex(blockNumber) {
+    return '0x' + Number(blockNumber).toString(16);
+}
+
+// Function to perform the debug_traceBlockByNumber RPC call using the debug provider
+async function traceBlockByNumber(debugProvider, blockNumber) {
+    try {
+        // Convert blockNumber to a hex string with the "0x" prefix manually
+        const hexBlockNumber = toHex(blockNumber);
+        logger.log(`Sending debug_traceBlockByNumber request for block ${hexBlockNumber}`);
+
+        const traceResult = await debugProvider.send('debug_traceBlockByNumber', [hexBlockNumber]);
+
+        if (traceResult) {
+            logger.log(`Trace Result for Block ${blockNumber}:`, JSON.stringify(traceResult, null, 2));
+        } else {
+            logger.warn(`No trace result for Block ${blockNumber}`);
+        }
+    } catch (error) {
+        logger.error(`Error tracing block ${blockNumber}:`, error);
+    }
+}
+
 // Function to start and manage the WebSocket connection
 function startConnection() {
     // Initializing WebSocket provider with the Ethereum node URL
     let provider = new ethers.WebSocketProvider(config.ETH_NODE_WSS);
+    
+    // Initializing HTTP provider for debug node RPC calls
+    let debugProvider = new ethers.JsonRpcProvider(config.RPC_NODE_RPC);
 
     // Variables for managing keep-alive mechanism
     let pingTimeout = null;
@@ -94,6 +127,11 @@ function startConnection() {
             logger.log(`Block Timestamp: ${blockTimestampMs}`);
             logger.log(`Current Server Time: ${serverUnixTimeMs}`);
             logger.log(`Block Receive Time: ${blockReceiveTimeMs} ms`);
+
+            // Perform block trace if tracing is enabled
+            if (enableTraceBlock) {
+                await traceBlockByNumber(debugProvider, blockNumber);
+            }
         } catch (error) {
             logger.error('Error fetching block data:', error);
         }
